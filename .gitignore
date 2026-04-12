@@ -1,0 +1,5 @@
+.cache/
+tmp/
+.env
+/node_modules/
+bin/link-shortener

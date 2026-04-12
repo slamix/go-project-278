@@ -1,0 +1,15 @@
+{
+  "name": "go-project-278",
+  "private": true,
+  "scripts": {
+    "backend:dev": "make backend-dev",
+    "frontend:dev": "start-hexlet-url-shortener-frontend",
+    "dev": "concurrently --kill-others --names backend,frontend --prefix-colors blue,green \"npm run backend:dev\" \"npm run frontend:dev\""
+  },
+  "dependencies": {
+    "@hexlet/project-url-shortener-frontend": "^1.0.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
