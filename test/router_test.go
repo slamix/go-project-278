@@ -89,13 +89,8 @@ func TestPingReturnsPong(t *testing.T) {
 		t.Fatalf("expected status %d, got %d", http.StatusOK, response.Code)
 	}
 
-	var body map[string]string
-	if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
-		t.Fatalf("failed to decode response body: %v", err)
-	}
-
-	if body["message"] != "pong" {
-		t.Fatalf("expected message %q, got %q", "pong", body["message"])
+	if body := response.Body.String(); body != "pong" {
+		t.Fatalf("expected body %q, got %q", "pong", body)
 	}
 }
 

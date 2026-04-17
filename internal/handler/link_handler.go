@@ -39,9 +39,7 @@ func NewLinkHandler(
 }
 
 func (handler *LinkHandler) Ping(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"message": "pong",
-	})
+	c.String(http.StatusOK, "pong")
 }
 
 func (handler *LinkHandler) List(c *gin.Context) {
