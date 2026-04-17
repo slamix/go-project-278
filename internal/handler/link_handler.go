@@ -16,6 +16,16 @@ type LinkHandler struct {
 	shortURLBase     string
 }
 
+type createLinkPayload struct {
+	OriginalURL string `json:"original_url" validate:"required,url"`
+	ShortName   string `json:"short_name" validate:"omitempty,min=3,max=32"`
+}
+
+type updateLinkPayload struct {
+	OriginalURL string `json:"original_url" validate:"required,url"`
+	ShortName   string `json:"short_name" validate:"omitempty,min=3,max=32"`
+}
+
 func NewLinkHandler(
 	linkService *service.LinkService,
 	linkVisitService *service.LinkVisitService,
@@ -51,12 +61,14 @@ func (handler *LinkHandler) List(c *gin.Context) {
 }
 
 func (handler *LinkHandler) Create(c *gin.Context) {
-	var params db.CreateLinkParams
-	if err := c.ShouldBindJSON(&params); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "invalid request body",
-		})
+	var payload createLinkPayload
+	if ok := helper.DecodeAndValidateJSON(c, &payload); !ok {
 		return
+	}
+
+	params := db.CreateLinkParams{
+		OriginalUrl: payload.OriginalURL,
+		ShortName:   payload.ShortName,
 	}
 
 	link, err := handler.linkService.Create(c.Request.Context(), params)
@@ -89,14 +101,16 @@ func (handler *LinkHandler) Update(c *gin.Context) {
 		return
 	}
 
-	var params db.UpdateLinkParams
-	if err := c.ShouldBindJSON(&params); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "invalid request body",
-		})
+	var payload updateLinkPayload
+	if ok := helper.DecodeAndValidateJSON(c, &payload); !ok {
 		return
 	}
-	params.ID = id
+
+	params := db.UpdateLinkParams{
+		ID:          id,
+		OriginalUrl: payload.OriginalURL,
+		ShortName:   payload.ShortName,
+	}
 
 	link, err := handler.linkService.Update(c.Request.Context(), params)
 	if err != nil {

@@ -27,6 +27,9 @@ func ParseID(c *gin.Context) (int64, bool) {
 func ParseListLinksInput(c *gin.Context) (*db.ListLinksByRangeParams, bool) {
 	rangeValue := c.Query("range")
 	if rangeValue == "" {
+		rangeValue = c.GetHeader("Range")
+	}
+	if rangeValue == "" {
 		return nil, true
 	}
 
@@ -54,6 +57,9 @@ func ParseListLinksInput(c *gin.Context) (*db.ListLinksByRangeParams, bool) {
 
 func ParseListLinkVisitsInput(c *gin.Context) (*db.ListLinkVisitsByRangeParams, bool) {
 	rangeValue := c.Query("range")
+	if rangeValue == "" {
+		rangeValue = c.GetHeader("Range")
+	}
 	if rangeValue == "" {
 		return nil, true
 	}

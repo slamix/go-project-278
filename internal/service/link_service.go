@@ -108,8 +108,15 @@ func (service *LinkService) GetByShortName(ctx context.Context, shortName string
 
 func (service *LinkService) Update(ctx context.Context, input db.UpdateLinkParams) (db.Link, error) {
 	input = normalizeUpdateInput(input)
-	if input.OriginalUrl == "" || input.ShortName == "" {
+	if input.OriginalUrl == "" {
 		return db.Link{}, ErrInvalidInput
+	}
+	if input.ShortName == "" {
+		currentLink, err := service.Get(ctx, input.ID)
+		if err != nil {
+			return db.Link{}, err
+		}
+		input.ShortName = currentLink.ShortName
 	}
 
 	link, err := service.queries.UpdateLink(ctx, input)

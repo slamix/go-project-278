@@ -43,6 +43,14 @@ type linkVisitResponse struct {
 	Status    int32     `json:"status"`
 }
 
+type apiErrorResponse struct {
+	Error string `json:"error"`
+}
+
+type validationErrorResponse struct {
+	Errors map[string]string `json:"errors"`
+}
+
 type memoryStore struct {
 	links       map[int64]db.Link
 	linkVisits  map[int64]db.LinkVisit
@@ -166,6 +174,41 @@ func TestCreateLinkGeneratesShortName(t *testing.T) {
 	}
 }
 
+func TestCreateLinkReturnsBadRequestForInvalidJSON(t *testing.T) {
+	router := newTestRouter()
+	response := performRawRequest(router, http.MethodPost, "/api/links", `{"original_url":`)
+
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, response.Code)
+	}
+
+	var body apiErrorResponse
+	decodeResponse(t, response, &body)
+	if body.Error != "invalid request" {
+		t.Fatalf("expected error %q, got %q", "invalid request", body.Error)
+	}
+}
+
+func TestCreateLinkReturnsValidationErrorForInvalidURL(t *testing.T) {
+	router := newTestRouter()
+	response := performRequest(router, http.MethodPost, "/api/links", map[string]string{
+		"original_url": "not-a-url",
+		"short_name":   "exmpl",
+	})
+
+	assertValidationError(t, response, "original_url", "url")
+}
+
+func TestCreateLinkReturnsValidationErrorForShortNameLength(t *testing.T) {
+	router := newTestRouter()
+	response := performRequest(router, http.MethodPost, "/api/links", map[string]string{
+		"original_url": "https://example.com/long-url",
+		"short_name":   "ab",
+	})
+
+	assertValidationError(t, response, "short_name", "min")
+}
+
 func TestCreateLinkReturnsConflictForDuplicateShortName(t *testing.T) {
 	router := newTestRouter()
 	performRequest(router, http.MethodPost, "/api/links", map[string]string{
@@ -178,9 +221,7 @@ func TestCreateLinkReturnsConflictForDuplicateShortName(t *testing.T) {
 		"short_name":   "exmpl",
 	})
 
-	if response.Code != http.StatusConflict {
-		t.Fatalf("expected status %d, got %d", http.StatusConflict, response.Code)
-	}
+	assertValidationError(t, response, "short_name", "short name already in use")
 }
 
 func TestListLinksReturnsAllLinks(t *testing.T) {
@@ -341,6 +382,65 @@ func TestUpdateLinkReturnsUpdatedLink(t *testing.T) {
 	})
 }
 
+func TestUpdateLinkKeepsShortNameWhenItIsMissing(t *testing.T) {
+	router := newTestRouter()
+	performRequest(router, http.MethodPost, "/api/links", map[string]string{
+		"original_url": "https://example.com/long-url",
+		"short_name":   "exmpl",
+	})
+
+	response := performRequest(router, http.MethodPut, "/api/links/1", map[string]string{
+		"original_url": "https://example.com/updated-url",
+	})
+	if response.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, response.Code)
+	}
+
+	var body linkResponse
+	decodeResponse(t, response, &body)
+
+	assertLinkResponse(t, body, linkResponse{
+		ID:          1,
+		OriginalURL: "https://example.com/updated-url",
+		ShortName:   "exmpl",
+		ShortURL:    "https://short.io/r/exmpl",
+	})
+}
+
+func TestUpdateLinkReturnsValidationErrorForInvalidURL(t *testing.T) {
+	router := newTestRouter()
+	performRequest(router, http.MethodPost, "/api/links", map[string]string{
+		"original_url": "https://example.com/long-url",
+		"short_name":   "exmpl",
+	})
+
+	response := performRequest(router, http.MethodPut, "/api/links/1", map[string]string{
+		"original_url": "not-a-url",
+		"short_name":   "upd",
+	})
+
+	assertValidationError(t, response, "original_url", "url")
+}
+
+func TestUpdateLinkReturnsValidationErrorForDuplicateShortName(t *testing.T) {
+	router := newTestRouter()
+	performRequest(router, http.MethodPost, "/api/links", map[string]string{
+		"original_url": "https://example.com/long-url",
+		"short_name":   "first",
+	})
+	performRequest(router, http.MethodPost, "/api/links", map[string]string{
+		"original_url": "https://example.com/another-url",
+		"short_name":   "second",
+	})
+
+	response := performRequest(router, http.MethodPut, "/api/links/2", map[string]string{
+		"original_url": "https://example.com/updated-url",
+		"short_name":   "first",
+	})
+
+	assertValidationError(t, response, "short_name", "short name already in use")
+}
+
 func TestUpdateLinkReturnsNotFound(t *testing.T) {
 	router := newTestRouter()
 	response := performRequest(router, http.MethodPut, "/api/links/404", map[string]string{
@@ -471,6 +571,16 @@ func TestListLinkVisitsReturnsInclusiveRange(t *testing.T) {
 	if body[0].ID != 6 || body[5].ID != 11 {
 		t.Fatalf("expected ids from 6 to 11, got %d and %d", body[0].ID, body[5].ID)
 	}
+
+	headerRequest := httptest.NewRequest(http.MethodGet, "/api/link_visits", nil)
+	headerRequest.Header.Set("Range", "[5,10]")
+	headerResponse := httptest.NewRecorder()
+	router.ServeHTTP(headerResponse, headerRequest)
+
+	if headerResponse.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, headerResponse.Code)
+	}
+	assertContentRange(t, headerResponse, "link_visits 5-10/12")
 }
 
 func newTestRouter() *gin.Engine {
@@ -507,11 +617,40 @@ func performRequest(router *gin.Engine, method string, path string, payload any)
 	return response
 }
 
+func performRawRequest(router *gin.Engine, method string, path string, payload string) *httptest.ResponseRecorder {
+	request := httptest.NewRequest(method, path, strings.NewReader(payload))
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+
+	router.ServeHTTP(response, request)
+
+	return response
+}
+
 func decodeResponse(t *testing.T, response *httptest.ResponseRecorder, target any) {
 	t.Helper()
 
 	if err := json.Unmarshal(response.Body.Bytes(), target); err != nil {
 		t.Fatalf("failed to decode response body: %v", err)
+	}
+}
+
+func assertValidationError(t *testing.T, response *httptest.ResponseRecorder, field string, expectedMessagePart string) {
+	t.Helper()
+
+	if response.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("expected status %d, got %d", http.StatusUnprocessableEntity, response.Code)
+	}
+
+	var body validationErrorResponse
+	decodeResponse(t, response, &body)
+
+	message := body.Errors[field]
+	if message == "" {
+		t.Fatalf("expected validation error for %q, got %+v", field, body.Errors)
+	}
+	if expectedMessagePart != "" && !strings.Contains(message, expectedMessagePart) {
+		t.Fatalf("expected validation error for %q to contain %q, got %q", field, expectedMessagePart, message)
 	}
 }
 

@@ -1,6 +1,7 @@
 package helper
 
 import (
+	"context"
 	"errors"
 	"log"
 	"net/http"
@@ -14,16 +15,23 @@ import (
 func RespondError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, service.ErrInvalidInput):
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
+		RespondValidationErrors(c, ValidationErrors{
+			"request": err.Error(),
 		})
 	case errors.Is(err, service.ErrNotFound):
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": err.Error(),
 		})
 	case errors.Is(err, service.ErrConflict):
-		c.JSON(http.StatusConflict, gin.H{
-			"error": err.Error(),
+		RespondValidationErrors(c, ValidationErrors{
+			"short_name": "short name already in use",
+		})
+	case errors.Is(err, context.Canceled):
+		c.Status(499)
+	case errors.Is(err, context.DeadlineExceeded):
+		log.Printf("request timeout: %v", err)
+		c.JSON(http.StatusGatewayTimeout, gin.H{
+			"error": "request timeout",
 		})
 	default:
 		log.Printf("internal server error: %v", err)
