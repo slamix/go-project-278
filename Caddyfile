@@ -1,4 +1,4 @@
-:80
+:{$PORT:80}
 
 # Статика из /app/public
 root * /app/public
@@ -14,4 +14,4 @@ handle / {
 }
 
 # Всё остальное — в приложение на 8080
-reverse_proxy localhost:8080
+reverse_proxy localhost:{$APP_PORT:8080}
