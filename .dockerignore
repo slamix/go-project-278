@@ -2,6 +2,5 @@
 .git/
 .github/
 .env
-bin/
 node_modules/
 tmp/
