@@ -27,7 +27,7 @@ func RespondError(c *gin.Context, err error) {
 			"short_name": "short name already in use",
 		})
 	case errors.Is(err, context.Canceled):
-		c.Status(499)
+		log.Printf("request canceled: %v", err)
 	case errors.Is(err, context.DeadlineExceeded):
 		log.Printf("request timeout: %v", err)
 		c.JSON(http.StatusGatewayTimeout, gin.H{

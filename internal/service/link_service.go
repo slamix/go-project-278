@@ -111,13 +111,6 @@ func (service *LinkService) Update(ctx context.Context, input db.UpdateLinkParam
 	if input.OriginalUrl == "" {
 		return db.Link{}, ErrInvalidInput
 	}
-	if input.ShortName == "" {
-		currentLink, err := service.Get(ctx, input.ID)
-		if err != nil {
-			return db.Link{}, err
-		}
-		input.ShortName = currentLink.ShortName
-	}
 
 	link, err := service.queries.UpdateLink(ctx, input)
 	if err != nil {

@@ -839,6 +839,9 @@ func (store *memoryStore) QueryRow(_ context.Context, query string, args ...inte
 		if !ok {
 			return memoryRow{err: pgx.ErrNoRows}
 		}
+		if shortName == "" {
+			shortName = foundLink.ShortName
+		}
 		if store.hasShortName(shortName, id) {
 			return memoryRow{err: &pgconn.PgError{Code: "23505"}}
 		}

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -149,8 +150,7 @@ func (handler *LinkHandler) Redirect(c *gin.Context) {
 		Status:    int32(status),
 	})
 	if err != nil {
-		helper.RespondError(c, err)
-		return
+		log.Printf("can't create link visit for link %d: %v", link.ID, err)
 	}
 
 	c.Redirect(status, link.OriginalUrl)

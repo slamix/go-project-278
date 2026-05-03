@@ -51,4 +51,4 @@ jobs:
       - name: Build
         run: |
           mkdir -p bin
-          go build -o bin/link-shortener ./cmd
+          go build -o bin/link-shortener .

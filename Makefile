@@ -35,11 +35,11 @@ frontend-dev:
 
 start:
 	mkdir -p $(GO_CACHE)
-	$(GO_ENV) go run ./cmd
+	$(GO_ENV) go run .
 
 build:
 	mkdir -p bin $(GO_CACHE)
-	$(GO_ENV) go build -o bin/link-shortener ./cmd
+	$(GO_ENV) go build -o bin/link-shortener .
 
 test:
 	mkdir -p $(GO_CACHE)

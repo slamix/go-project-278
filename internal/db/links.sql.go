@@ -163,7 +163,7 @@ func (q *Queries) ListLinksByRange(ctx context.Context, arg ListLinksByRangePara
 const updateLink = `-- name: UpdateLink :one
 UPDATE links
 SET original_url = $2,
-    short_name = $3
+    short_name = COALESCE(NULLIF($3::text, ''), short_name)
 WHERE id = $1
 RETURNING id, original_url, short_name, created_at
 `

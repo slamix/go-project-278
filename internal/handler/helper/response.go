@@ -10,7 +10,7 @@ import (
 	"link-shortener/internal/db"
 )
 
-const defaultShortURLBase = "http://localhost:8080/r"
+const defaultShortURLBase = "https://link-sortener-service.onrender.com/r"
 
 type LinkResponse struct {
 	ID          int64  `json:"id"`
